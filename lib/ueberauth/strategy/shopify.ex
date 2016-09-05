@@ -12,7 +12,7 @@ defmodule Ueberauth.Strategy.Shopify do
 
       config :ueberauth, Ueberauth,
         providers: [
-          github: { Ueberauth.Strategy.Shopify, [] }
+          uhopify: { Ueberauth.Strategy.Shopify, [] }
         ]
 
   Then include the configuration for shopify.
@@ -68,13 +68,12 @@ defmodule Ueberauth.Strategy.Shopify do
 
   Deafult is "read_products,read_customers,read_orders"
   """
-  use Ueberauth.Strategy, uid_field: :login,
+  use Ueberauth.Strategy, uid_field: :shop,
                           default_scope: "read_products,read_customers,read_orders",
                           oauth2_module: Ueberauth.Strategy.Shopify.OAuth
 
   alias Ueberauth.Auth.Info
   alias Ueberauth.Auth.Credentials
-  alias Ueberauth.Auth.Extra
 
   @doc """
   Handles the initial redirect to the Shopify authentication page.
@@ -101,12 +100,13 @@ defmodule Ueberauth.Strategy.Shopify do
   """
   def handle_callback!(%Plug.Conn{ params: %{ "code" => code } } = conn) do
     module = option(conn, :oauth2_module)
-    token = apply(module, :get_token!, [[code: code]])
-
+    redirect_uri = callback_url(conn)
+    client = apply(module, :get_token!, [[code: code, redirect_uri: redirect_uri]])
+    token = client.token
     if token.access_token == nil do
       set_errors!(conn, [error(token.other_params["error"], token.other_params["error_description"])])
     else
-      fetch_user(conn, token)
+      fetch_user(conn, client)
     end
   end
 
@@ -120,22 +120,29 @@ defmodule Ueberauth.Strategy.Shopify do
   """
   def handle_cleanup!(conn) do
     conn
-    |> put_private(:github_user, nil)
-    |> put_private(:github_token, nil)
+    |> put_private(:shopify_token, nil)
+  end
+
+  defp fetch_user(conn, client = %{token: token}) do
+    conn = put_private(conn, :shopify_token, token)
   end
 
   @doc """
   Fetches the uid field from the Shopify response. This defaults to the option `uid_field` which in-turn defaults to `login`
   """
   def uid(conn) do
-    conn.private.github_user[option(conn, :uid_field) |> to_string]
+    IO.inspect "UID"
+    IO.inspect conn
+    conn.private.shopify_token[option(conn, :uid_field) |> to_string]
   end
 
   @doc """
   Includes the credentials from the Shopify response.
   """
   def credentials(conn) do
-    token = conn.private.github_token
+    IO.inspect "CREDENTIALS"
+    IO.inspect conn
+    token = conn.access_token
     scopes = (token.other_params["scope"] || "")
     |> String.split(",")
 
@@ -147,59 +154,6 @@ defmodule Ueberauth.Strategy.Shopify do
       expires: !!token.expires_at,
       scopes: scopes
     }
-  end
-
-  @doc """
-  Fetches the fields to populate the info section of the `Ueberauth.Auth` struct.
-  """
-  def info(conn) do
-    user = conn.private.github_user
-
-    %Info{
-      name: user["name"],
-      nickname: user["login"],
-      email: user["email"],
-      location: user["location"],
-      urls: %{
-        followers_url: user["followers_url"],
-        avatar_url: user["avatar_url"],
-        events_url: user["events_url"],
-        starred_url: user["starred_url"],
-        blog: user["blog"],
-        subscriptions_url: user["subscriptions_url"],
-        organizations_url: user["organizations_url"],
-        gists_url: user["gists_url"],
-        following_url: user["following_url"],
-        api_url: user["url"],
-        html_url: user["html_url"],
-        received_events_url: user["received_events_url"],
-        repos_url: user["repos_url"]
-      }
-    }
-  end
-
-  @doc """
-  Stores the raw information (including the token) obtained from the Shopify callback.
-  """
-  def extra(conn) do
-    %Extra {
-      raw_info: %{
-        token: conn.private.github_token,
-        user: conn.private.github_user
-      }
-    }
-  end
-
-  defp fetch_user(conn, token) do
-    conn = put_private(conn, :github_token, token)
-    case OAuth2.AccessToken.get(token, "/user") do
-      { :ok, %OAuth2.Response{status_code: 401, body: _body}} ->
-        set_errors!(conn, [error("token", "unauthorized")])
-      { :ok, %OAuth2.Response{status_code: status_code, body: user} } when status_code in 200..399 ->
-        put_private(conn, :github_user, user)
-      { :error, %OAuth2.Error{reason: reason} } ->
-        set_errors!(conn, [error("OAuth2", reason)])
-    end
   end
 
   defp option(conn, key) do

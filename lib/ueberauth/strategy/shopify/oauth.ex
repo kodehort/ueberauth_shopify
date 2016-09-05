@@ -17,6 +17,17 @@ defmodule Ueberauth.Strategy.Shopify.OAuth do
     token_url: "https://{shop}.myshopify.com/admin/oauth/access_token",
   ]
 
+  def options() do
+    configs = Application.get_env(:ueberauth, Ueberauth.Strategy.Shopify.OAuth)
+    opts = [
+      strategy: __MODULE__,
+      site: "https://{shop}.myshopify.com",
+      authorize_url: "https://{shop}.myshopify.com/admin/oauth/authorize",
+      token_url: "https://{shop}.myshopify.com/admin/oauth/access_token",
+    ]
+    Keyword.merge(@defaults, configs)
+  end
+
   @doc """
   Construct a client for requests to Shopify
 
@@ -28,8 +39,7 @@ defmodule Ueberauth.Strategy.Shopify.OAuth do
   These options are only useful for usage outside the normal callback phase of Ueberauth.
   """
   def client(opts \\ []) do
-    opts = Keyword.merge(@defaults, Application.get_env(:ueberauth, Ueberauth.Strategy.Shopify.OAuth))
-    |> Keyword.merge(opts)
+    opts = Keyword.merge(options(), opts)
 
     OAuth2.Client.new(opts)
   end
@@ -43,6 +53,8 @@ defmodule Ueberauth.Strategy.Shopify.OAuth do
   end
 
   def get_token!(params \\ [], options \\ %{}) do
+    client_secret = options()[:client_secret]
+    params = Keyword.merge(params, client_secret: client_secret)
     headers = Dict.get(options, :headers, [])
     options = Dict.get(options, :options, [])
     client_options = Dict.get(options, :client_options, [])
