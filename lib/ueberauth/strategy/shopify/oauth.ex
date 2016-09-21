@@ -7,39 +7,33 @@ defmodule Ueberauth.Strategy.Shopify.OAuth do
       config :ueberauth, Ueberauth.Strategy.Shopify.OAuth,
         client_id: System.get_env("SHOPIFY_API_KEY"),
         client_secret: System.get_env("SHOPIFY_SECRET")
+
+  The `{shop}` value for all OAuth interaction with Shopify will be set dynamically following initial instigation of the OAuth key exchange.
   """
   use OAuth2.Strategy
 
   @defaults [
     strategy: __MODULE__,
     site: "https://{shop}.myshopify.com",
-    authorize_url: "https://{shop}.myshopify.com/admin/oauth/authorize",
-    token_url: "https://{shop}.myshopify.com/admin/oauth/access_token",
+    authorize_url: "/admin/oauth/authorize",
+    token_url: "/admin/oauth/access_token",
+    redirect_uri: "http://myapp.com/auth/shopify/callback",
   ]
 
-  def options() do
-    configs = Application.get_env(:ueberauth, Ueberauth.Strategy.Shopify.OAuth)
-    opts = [
-      strategy: __MODULE__,
-      site: "https://{shop}.myshopify.com",
-      authorize_url: "https://{shop}.myshopify.com/admin/oauth/authorize",
-      token_url: "https://{shop}.myshopify.com/admin/oauth/access_token",
-    ]
-    Keyword.merge(@defaults, configs)
-  end
-
   @doc """
-  Construct a client for requests to Shopify
-
-  Optionally include any OAuth2 options here to be merged with the defaults.
+  Construct a client for requests to Shopify using configuration from Application.get_env/2
 
       Ueberauth.Strategy.Shopify.OAuth.client(redirect_uri: "http://localhost:4000/auth/shopify/callback")
 
   This will be setup automatically for you in `Ueberauth.Strategy.Shopify`.
-  These options are only useful for usage outside the normal callback phase of Ueberauth.
   """
-  def client(opts \\ []) do
-    opts = Keyword.merge(options(), opts)
+  def new_client(opts \\ []) do
+    configs = Application.get_env(:ueberauth, Ueberauth.Strategy.Shopify.OAuth)
+
+    opts =
+      @defaults
+      |> Keyword.merge(configs)
+      |> Keyword.merge(opts)
 
     OAuth2.Client.new(opts)
   end
@@ -48,17 +42,15 @@ defmodule Ueberauth.Strategy.Shopify.OAuth do
   Provides the authorize url for the request phase of Ueberauth. No need to call this usually.
   """
   def authorize_url!(params \\ [], opts \\ []) do
-    client(opts)
+    opts
+    |> new_client
     |> OAuth2.Client.authorize_url!(params)
   end
 
-  def get_token!(params \\ [], options \\ %{}) do
-    client_secret = options()[:client_secret]
-    params = Keyword.merge(params, client_secret: client_secret)
-    headers = Dict.get(options, :headers, [])
-    options = Dict.get(options, :options, [])
-    client_options = Dict.get(options, :client_options, [])
-    OAuth2.Client.get_token!(client(client_options), params, headers, options)
+  def get_token!(params \\ [], opts \\ []) do
+    opts
+    |> new_client
+    |> OAuth2.Client.get_token!(params)
   end
 
   # Strategy Callbacks

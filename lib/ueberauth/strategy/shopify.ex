@@ -54,7 +54,7 @@ defmodule Ueberauth.Strategy.Shopify do
 
       config :ueberauth, Ueberauth,
         providers: [
-          shopify: { Ueberauth.Strategy.Shopify, [uid_field: :email] }
+          shopify: { Ueberauth.Strategy.Shopify, [uid_field: :shop] }
         ]
 
   Default is `:login`
@@ -68,11 +68,8 @@ defmodule Ueberauth.Strategy.Shopify do
 
   Deafult is "read_products,read_customers,read_orders"
   """
-  use Ueberauth.Strategy, uid_field: :shop,
-                          default_scope: "read_products,read_customers,read_orders",
-                          oauth2_module: Ueberauth.Strategy.Shopify.OAuth
+  use Ueberauth.Strategy, uid_field: :shop, default_scope: "read_products,read_customers,read_orders"
 
-  alias Ueberauth.Auth.Info
   alias Ueberauth.Auth.Credentials
 
   @doc """
@@ -80,39 +77,40 @@ defmodule Ueberauth.Strategy.Shopify do
 
   To customize the scope (permissions) that are requested by shopify include them as part of your url:
 
-      "https://{shop_name}.myshopify.com/admin/oauth/authorize?scope=read_products,read_customers,read_orders"
+      "https://{shop}.myshopify.com/admin/oauth/authorize?scope=read_products,read_customers,read_orders"
 
   You can also include a `state` param that shopify will return to you.
   """
-  def handle_request!(conn) do
+  def handle_request!(%Plug.Conn{ params: %{ "shop" => shop } } = conn) do
     scopes = conn.params["scope"] || option(conn, :default_scope)
-    opts = [ scope: scopes ]
-    if conn.params["state"], do: opts = Keyword.put(opts, :state, conn.params["state"])
-    opts = Keyword.put(opts, :redirect_uri, callback_url(conn))
-    module = option(conn, :oauth2_module)
+    opts = [ site: "https://" <> shop ]
+    params = [ scope: scopes ]
+    params = if conn.params["state"], do: Keyword.put(params, :state, conn.params["state"]), else: params
+    params = Keyword.put(params, :redirect_uri, callback_url(conn))
 
-    redirect!(conn, apply(module, :authorize_url!, [opts]))
+    redirect!(conn, Ueberauth.Strategy.Shopify.OAuth.authorize_url!(params, opts))
   end
 
   @doc """
   Handles the callback from Shopify. When there is a failure from Shopify the failure is included in the
   `ueberauth_failure` struct. Otherwise the information returned from Shopify is returned in the `Ueberauth.Auth` struct.
   """
-  def handle_callback!(%Plug.Conn{ params: %{ "code" => code } } = conn) do
-    module = option(conn, :oauth2_module)
-    redirect_uri = callback_url(conn)
-    client = apply(module, :get_token!, [[code: code, redirect_uri: redirect_uri]])
-    token = client.token
+  def handle_callback!(%Plug.Conn{ params: %{ "code" => code, "shop" => shop } } = conn) do
+    opts = [redirect_uri: callback_url(conn), site: "https://" <> shop]
+    %{token: token} = Ueberauth.Strategy.Shopify.OAuth.get_token!([
+      code: code,
+      client_secret: Ueberauth.Strategy.Shopify.OAuth.new_client().client_secret
+    ], opts)
     if token.access_token == nil do
       set_errors!(conn, [error(token.other_params["error"], token.other_params["error_description"])])
     else
-      fetch_user(conn, client)
+      conn = put_private(conn, :shopify_token, token)
     end
   end
 
   @doc false
   def handle_callback!(conn) do
-    set_errors!(conn, [error("missing_code", "No code received")])
+    set_errors!(conn, [error("missing_code", "No code or shop received")])
   end
 
   @doc """
@@ -120,29 +118,22 @@ defmodule Ueberauth.Strategy.Shopify do
   """
   def handle_cleanup!(conn) do
     conn
+    |> put_private(:shopify_user, nil)
     |> put_private(:shopify_token, nil)
-  end
-
-  defp fetch_user(conn, client = %{token: token}) do
-    conn = put_private(conn, :shopify_token, token)
   end
 
   @doc """
   Fetches the uid field from the Shopify response. This defaults to the option `uid_field` which in-turn defaults to `login`
   """
-  def uid(conn) do
-    IO.inspect "UID"
-    IO.inspect conn
-    conn.private.shopify_token[option(conn, :uid_field) |> to_string]
+  def uid(%Plug.Conn{ params: %{ "shop" => shop } } = conn) do
+    shop
   end
 
   @doc """
   Includes the credentials from the Shopify response.
   """
   def credentials(conn) do
-    IO.inspect "CREDENTIALS"
-    IO.inspect conn
-    token = conn.access_token
+    token = conn.private.shopify_token
     scopes = (token.other_params["scope"] || "")
     |> String.split(",")
 
@@ -155,7 +146,6 @@ defmodule Ueberauth.Strategy.Shopify do
       scopes: scopes
     }
   end
-
   defp option(conn, key) do
     Dict.get(options(conn), key, Dict.get(default_options, key))
   end
