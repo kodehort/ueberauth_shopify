@@ -12,7 +12,7 @@ defmodule Ueberauth.Strategy.Shopify do
 
       config :ueberauth, Ueberauth,
         providers: [
-          uhopify: { Ueberauth.Strategy.Shopify, [] }
+          shopify: { Ueberauth.Strategy.Shopify, [] }
         ]
 
   Then include the configuration for shopify.
