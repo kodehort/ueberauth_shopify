@@ -2,6 +2,8 @@ defmodule UeberauthShopify.Mixfile do
   use Mix.Project
 
   @version "0.1.0"
+  @url "https://github.com/alistairstead/ueberauth_shopify"
+
 
   def project do
     [app: :ueberauth_shopify,
@@ -10,8 +12,8 @@ defmodule UeberauthShopify.Mixfile do
      package: package,
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     source_url: "https://github.com/alistairstead/ueberauth_shopify",
-     homepage_url: "https://github.com/alistairstead/ueberauth_shopify",
+     source_url: @url,
+     homepage_url: @url,
      description: description,
      deps: deps,
      docs: docs]
@@ -41,7 +43,7 @@ defmodule UeberauthShopify.Mixfile do
   end
 
   defp docs do
-    [extras: docs_extras, main: "extra-readme"]
+    [extras: docs_extras]
   end
 
   defp docs_extras do
@@ -56,6 +58,6 @@ defmodule UeberauthShopify.Mixfile do
     [files: ["lib", "mix.exs", "README.md", "LICENSE"],
       maintainers: ["Alistair Stead"],
       licenses: ["MIT"],
-      links: %{"GitHub": "https://github.com/alistairstead/ueberauth_shopify"}]
+      links: %{"GitHub": @url}]
   end
 end
