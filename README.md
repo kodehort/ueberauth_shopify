@@ -94,5 +94,5 @@ config :ueberauth, Ueberauth,
 
 ## License
 
-Please see [LICENSE](https://github.com/alistairstead/ueberauth/ueberauth_shopify/blob/master/LICENSE) for licensing details.
+Please see [LICENSE](https://github.com/alistairstead/ueberauth_shopify/blob/master/LICENSE) for licensing details.
 
