@@ -51,7 +51,9 @@ defmodule UeberauthShopify.Mixfile do
   end
 
   defp description do
-    "An Ueberauth strategy for authenticating your application with Shopify."
+    """
+      An Ueberauth strategy for authenticating your application with Shopify.
+    """
   end
 
   defp package do
