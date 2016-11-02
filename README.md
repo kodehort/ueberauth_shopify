@@ -22,7 +22,7 @@
     end
     ```
 
-1. Add Google to your Überauth configuration:
+1. Add Shopify to your Überauth configuration:
 
     ```elixir
     config :ueberauth, Ueberauth,
