@@ -147,6 +147,6 @@ defmodule Ueberauth.Strategy.Shopify do
     }
   end
   defp option(conn, key) do
-    Dict.get(options(conn), key, Dict.get(default_options, key))
+    Dict.get(options(conn), key, Dict.get(default_options(), key))
   end
 end
