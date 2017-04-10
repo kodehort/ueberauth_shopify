@@ -104,7 +104,7 @@ defmodule Ueberauth.Strategy.Shopify do
     if token.access_token == nil do
       set_errors!(conn, [error(token.other_params["error"], token.other_params["error_description"])])
     else
-      conn = put_private(conn, :shopify_token, token)
+      put_private(conn, :shopify_token, token)
     end
   end
 
@@ -125,7 +125,7 @@ defmodule Ueberauth.Strategy.Shopify do
   @doc """
   Fetches the uid field from the Shopify response. This defaults to the option `uid_field` which in-turn defaults to `login`
   """
-  def uid(%Plug.Conn{ params: %{ "shop" => shop } } = conn) do
+  def uid(%Plug.Conn{ params: %{ "shop" => shop } }) do
     shop
   end
 
@@ -147,6 +147,6 @@ defmodule Ueberauth.Strategy.Shopify do
     }
   end
   defp option(conn, key) do
-    Dict.get(options(conn), key, Dict.get(default_options, key))
+    Keyword.get(options(conn), key, Keyword.get(default_options(), key))
   end
 end

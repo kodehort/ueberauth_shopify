@@ -9,14 +9,14 @@ defmodule UeberauthShopify.Mixfile do
     [app: :ueberauth_shopify,
      version: @version,
      elixir: "~> 1.3",
-     package: package,
+     package: package(),
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      source_url: @url,
      homepage_url: @url,
-     description: description,
-     deps: deps,
-     docs: docs]
+     description: description(),
+     deps: deps(),
+     docs: docs()]
   end
 
   # Configuration for the OTP application
@@ -43,7 +43,7 @@ defmodule UeberauthShopify.Mixfile do
   end
 
   defp docs do
-    [extras: docs_extras]
+    [extras: docs_extras()]
   end
 
   defp docs_extras do
