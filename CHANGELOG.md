@@ -1,3 +1,5 @@
+* Update the dependencies to latest stable releases
+
 # v 0.1.2
 
 * Correct unused variable warnings and made function calls explicit
